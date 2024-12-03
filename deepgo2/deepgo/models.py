@@ -215,10 +215,51 @@ class GateSAEModel(BaseDeepGOModel):
         self.W_dec = nn.Parameter(th.nn.init.kaiming_uniform_(th.empty(cfg.d_hidden, cfg.d_mlp, dtype=cfg.dtype)))
         self.b_mag = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
         self.b_gate = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
-        self.r_mag = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
+        self.r_mag = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype)) # 后面可以尝试用kaiming初始化
         self.W_gate = self.W_mag * self.r_mag
         self.b_dec = nn.Parameter(torch.zeros(cfg.d_mlp, dtype=cfg.dtype))
 
-    def forward(self, feature: torch.Tensor):
-        a = 1
-    # def loss(self, feature: torch.Tensor):
+    def forward(self, x: torch.Tensor):
+        # Apply pre-encoder bias
+        x_center = x - self.b_dec
+        
+        # Gating encoder (estimates which features are active)
+        active_features = (x_center @ self.W_gate + self.b_gate) > 0
+        
+        # Magnitudes encoder (estimates active features’ magnitudes)
+        feature_magnitudes = F.relu(x_center @ self.W_mag + self.b_mag)
+        
+        # 重建后的激活
+        reconstruction = (active_features * feature_magnitudes) @ self.W_dec + self.b_dec
+        reconstruction_loss = torch.sum((reconstruction - x)**2, dim=-1).mean()
+        pi_gate = x_center @ self.W_gate + self.b_gate
+        predition = F.sigmoid(pi_gate)
+        # 计算辅助误差
+        with torch.no_grad():
+            W_dec_stop_grad = self.W_dec.detach()
+            b_dec_stop_grad = self.b_dec.detach()
+        via_reconstruction_loss = (F.relu(pi_gate) @ W_dec_stop_grad + b_dec_stop_grad)
+
+        return reconstruction,reconstruction_loss,predition,via_reconstruction_loss
+
+    # def loss(self, x: torch.Tensor, l1_coef):
+    #     gated_sae_loss = 0.0
+    
+    #     # 计算重建误差
+    #     reconstruction = self.forward(x)
+    #     gated_sae_loss += torch.sum((reconstruction - x)**2, dim=-1).mean()
+        
+    #     # 计算稀疏性误差
+    #     x_center = x - self.b_dec
+    #     via_gate_feature_magnitudes = F.relu(x_center @ self.W_gate + self.b_gate)
+    #     gated_sae_loss += l1_coef * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
+        
+    #     # 计算辅助误差
+    #     with torch.no_grad():
+    #         W_dec_stop_grad = self.W_dec.detach()
+    #         b_dec_stop_grad = self.b_dec.detach()
+        
+    #     via_gate_reconstruction = (via_gate_feature_magnitudes @ W_dec_stop_grad + b_dec_stop_grad)
+    #     gated_sae_loss += torch.sum((via_gate_reconstruction - x)**2, dim=-1).mean()
+        
+    #     return gated_sae_loss

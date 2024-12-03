@@ -11,6 +11,7 @@ from scipy.spatial import distance
 from scipy import sparse
 import math
 from .utils import NAMESPACES, FUNC_DICT
+import time
 
 def compute_metrics(test_df, go, terms_dict, terms, ont, eval_preds):
     labels = np.zeros((len(test_df), len(terms_dict)), dtype=np.float32)
@@ -48,7 +49,9 @@ def compute_metrics(test_df, go, terms_dict, terms, ont, eval_preds):
     spec_labels = test_df['exp_annotations'].values
     spec_labels = list(map(lambda x: set(filter(lambda y: y in go_set, x)), spec_labels))
     fmax_spec_match = 0
+    print("ready to enter loop")
     for t in range(0, 101):
+        start_time = time.time()  # 记录开始时间
         threshold = t / 100.0
         preds = [set() for _ in range(len(test_df))]
         for i in range(len(test_df)):
@@ -64,6 +67,7 @@ def compute_metrics(test_df, go, terms_dict, terms, ont, eval_preds):
             
         # Filter classes
         preds = list(map(lambda x: set(filter(lambda y: y in go_set, x)), preds))
+        print('ready to enter evaluate_annotations in line 68, metrics.py')
         fscore, prec, rec, s, ru, mi, fps, fns, avg_ic, wf = evaluate_annotations(go, labels, preds)
         spec_match = 0
         for i, row in enumerate(test_df.itertuples()):
@@ -80,6 +84,9 @@ def compute_metrics(test_df, go, terms_dict, terms, ont, eval_preds):
             wtmax = threshold
         if smin > s:
             smin = s
+        end_time = time.time()  # 记录结束时间
+        loop_time = end_time - start_time  # 计算每次循环的耗时
+        print(f"第{t+1}次循环耗时: {loop_time:.4f}秒")
     precisions = np.array(precisions)
     recalls = np.array(recalls)
     sorted_index = np.argsort(recalls)
