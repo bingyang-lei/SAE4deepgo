@@ -10,9 +10,10 @@
             "request": "launch",
             "program": "${file}",
             // 设置运行时参数
-            "args": ["-m", "esm_sae_gate", "-ont", "bp"],
+            "args": ["-m", "esm_sae", "-ont", "bp"],
             "console": "integratedTerminal",
-            "cwd": "/mnt/data1/xyliu/DeepgoSE/deepgo2"
+            "cwd": "/mnt/data1/xyliu/DeepgoSE/deepgo2",
+            "justMyCode": false,
         }
     ]
 }

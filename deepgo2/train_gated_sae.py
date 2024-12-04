@@ -1,5 +1,5 @@
 # 如果使用protgpt2激活，则需要显式设置-m protgpt2 -td test_gpt
-# 如果使用SAE，则同样要设置模型-m esm_sae -ont bp
+# 如果使用SAE，则同样要设置模型-m esm_sae_gate -ont bp
 import click as ck
 import pandas as pd
 import torch as th
@@ -47,7 +47,7 @@ from deepgo.metrics import compute_roc
 @ck.option(
     '--load', '-ld', is_flag=True, help='Load Model?')
 @ck.option(
-    '--device', '-d', default='cuda:0',
+    '--device', '-d', default='cuda', # 记得改这里时也要去改模型的device位置
     help='Device')
 def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epochs, load, device):
     """
@@ -146,10 +146,12 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                     bar.update(1)
                     batch_features = batch_features.to(device)
                     batch_labels = batch_labels.to(device)
-                    reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features)
+                    reconstruction, reconstruction_loss, predition, via_reconstruction_loss \
+                    = net(batch_features,batch_labels)
                     pred_loss = F.binary_cross_entropy(predition, batch_labels)
                     # el_loss = net.el_loss(normal_forms)
                     total_loss = pred_loss + reconstruction_loss + via_reconstruction_loss
+
                     train_pred_loss += pred_loss.detach().item()
                     train_reconstruction_loss += reconstruction_loss.detach().item()
                     train_via_reconstruction_loss += via_reconstruction_loss.detach().item()
@@ -173,19 +175,19 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                         bar.update(1)
                         batch_features = batch_features.to(device)
                         batch_labels = batch_labels.to(device)
-                        reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features)
+                        reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features,batch_labels)
                         batch_loss = F.binary_cross_entropy(predition, batch_labels)
-                        valid_loss += batch_loss.detach().item() + reconstruction_loss.detach().item() + via_reconstruction_loss.detach().item()
+                        valid_loss += batch_loss.detach().item() + cfg.l1_coeff*(reconstruction_loss.detach().item() + via_reconstruction_loss.detach().item())
                         valid_pred_loss += batch_loss.detach().item()
                         preds = np.append(preds, predition.detach().cpu().numpy())
                 valid_loss /= valid_steps
                 valid_pred_loss /= valid_steps
                 roc_auc = compute_roc(valid_labels, preds)
-                print(f'Epoch {epoch}: train_pred_Loss - {train_pred_loss}, 
+                print(f'''Epoch {epoch}: train_pred_Loss - {train_pred_loss}, 
                       train_reconstruction_loss: {train_reconstruction_loss}, 
                       train_via_reconstruction_loss: {train_via_reconstruction_loss},
                       Valid_total_loss - {valid_loss}, Valid_pred_Loss - {valid_pred_loss},
-                      Valid_AUC - {roc_auc}')
+                      Valid_AUC - {roc_auc}''')
 
             if valid_pred_loss < best_loss:
                 best_loss = valid_pred_loss
@@ -210,10 +212,10 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                 bar.update(1)
                 batch_features = batch_features.to(device)
                 batch_labels = batch_labels.to(device)
-                reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features)
+                reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features,batch_labels)
                 batch_loss = F.binary_cross_entropy(predition, batch_labels)
                 valid_pred_loss += batch_loss.detach().item()
-                valid_loss += batch_loss.detach().item() + reconstruction_loss.detach().item() + via_reconstruction_loss.detach().item()
+                valid_loss += batch_loss.detach().item() + cfg.l1_coeff*(reconstruction_loss.detach().item() + via_reconstruction_loss.detach().item())
                 # preds = np.append(preds, predition.detach().cpu().numpy())
         valid_loss /= valid_steps
         valid_pred_loss /= valid_steps
@@ -228,18 +230,18 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                 bar.update(1)
                 batch_features = batch_features.to(device)
                 batch_labels = batch_labels.to(device)
-                reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features)
+                reconstruction,reconstruction_loss,predition,via_reconstruction_loss = net(batch_features,batch_labels)
                 batch_loss = F.binary_cross_entropy(predition, batch_labels)
                 test_pred_loss += batch_loss.detach().item()
-                test_loss += batch_loss.detach().cpu().item() + reconstruction_loss.detach().cpu().item() + via_reconstruction_loss.detach().cpu().item()
+                test_loss += batch_loss.detach().cpu().item() + cfg.l1_coeff*(reconstruction_loss.detach().cpu().item() + via_reconstruction_loss.detach().cpu().item())
                 preds.append(predition.detach().cpu().numpy())
             test_loss /= test_steps
             test_pred_loss /= test_steps
         preds = np.concatenate(preds)
         roc_auc = compute_roc(test_labels, preds)
-        print(f'Valid Loss - {valid_loss}, Valid pred Loss - {valid_pred_loss},
+        print(f'''Valid Loss - {valid_loss}, Valid pred Loss - {valid_pred_loss},
               Test Loss - {test_loss}, Test pred Loss - {test_pred_loss},
-              Test AUC - {roc_auc}')
+              Test AUC - {roc_auc}''')
 
     # Save the performance into a file
     with open(f'{data_root}/{ont}/valid_{model_name}.pf', 'w') as f:

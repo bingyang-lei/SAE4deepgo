@@ -2136,3 +2136,217 @@ Valid Loss - 0.01182211437665018, Test Loss - 0.011500099613128797, Test AUC - 0
   data[i, :] = th.FloatTensor(row.mlp_activation[25])
 /mnt/data1/xyliu/.conda/envs/xyliuEnv/lib/python3.8/site-packages/transformers/utils/generic.py:441: UserWarning: torch.utils._pytree._register_pytree_node is deprecated. Please use torch.utils._pytree.register_pytree_node instead.
   _torch_pytree._register_pytree_node(
+Usage: evaluate.py [OPTIONS]
+Try 'evaluate.py --help' for help.
+
+Error: Invalid value for '--ont' / '-ont': 'bf' is not one of 'mf', 'bp', 'cc'.
+Computing Fmax
+ready to enter loop
+ready to enter evaluate_annotations in line 68, metrics.py
+第1次循环耗时: 98.6842秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第2次循环耗时: 38.3085秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第3次循环耗时: 34.8509秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第4次循环耗时: 36.6264秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第5次循环耗时: 35.4931秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第6次循环耗时: 39.0038秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第7次循环耗时: 34.9636秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第8次循环耗时: 35.4666秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第9次循环耗时: 34.9537秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第10次循环耗时: 35.1206秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第11次循环耗时: 36.2528秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第12次循环耗时: 34.8494秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第13次循环耗时: 36.2542秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第14次循环耗时: 34.7530秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第15次循环耗时: 35.0261秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第16次循环耗时: 36.0187秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第17次循环耗时: 35.0592秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第18次循环耗时: 35.8134秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第19次循环耗时: 34.2203秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第20次循环耗时: 35.4114秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第21次循环耗时: 35.1728秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第22次循环耗时: 35.6146秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第23次循环耗时: 38.4081秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第24次循环耗时: 34.1335秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第25次循环耗时: 35.3072秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第26次循环耗时: 34.5450秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第27次循环耗时: 35.5109秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第28次循环耗时: 36.1808秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第29次循环耗时: 35.1962秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第30次循环耗时: 36.4795秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第31次循环耗时: 34.9351秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第32次循环耗时: 36.1113秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第33次循环耗时: 34.5035秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第34次循环耗时: 35.2452秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第35次循环耗时: 35.4986秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第36次循环耗时: 34.9219秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第37次循环耗时: 36.2498秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第38次循环耗时: 34.6320秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第39次循环耗时: 37.4802秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第40次循环耗时: 35.8698秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第41次循环耗时: 34.8284秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第42次循环耗时: 35.4503秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第43次循环耗时: 34.6169秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第44次循环耗时: 35.3309秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第45次循环耗时: 33.9674秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第46次循环耗时: 34.2200秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第47次循环耗时: 35.2905秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第48次循环耗时: 33.5334秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第49次循环耗时: 35.0061秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第50次循环耗时: 33.5827秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第51次循环耗时: 34.1726秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第52次循环耗时: 31.7884秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第53次循环耗时: 19.4783秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第54次循环耗时: 7.8320秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第55次循环耗时: 2.9960秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第56次循环耗时: 1.0438秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第57次循环耗时: 0.7273秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第58次循环耗时: 0.6743秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第59次循环耗时: 0.6589秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第60次循环耗时: 0.6188秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第61次循环耗时: 0.6237秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第62次循环耗时: 0.5954秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第63次循环耗时: 0.5959秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第64次循环耗时: 0.5865秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第65次循环耗时: 0.5610秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第66次循环耗时: 0.5579秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第67次循环耗时: 0.5211秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第68次循环耗时: 0.5221秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第69次循环耗时: 0.4841秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第70次循环耗时: 0.4786秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第71次循环耗时: 0.9478秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第72次循环耗时: 0.4386秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第73次循环耗时: 0.4482秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第74次循环耗时: 0.4297秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第75次循环耗时: 0.4144秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第76次循环耗时: 0.4142秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第77次循环耗时: 0.3943秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第78次循环耗时: 0.3943秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第79次循环耗时: 0.3712秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第80次循环耗时: 0.3731秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第81次循环耗时: 0.3539秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第82次循环耗时: 0.3505秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第83次循环耗时: 0.3394秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第84次循环耗时: 0.3153秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第85次循环耗时: 0.3181秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第86次循环耗时: 0.2929秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第87次循环耗时: 0.2771秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第88次循环耗时: 0.7340秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第89次循环耗时: 0.2436秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第90次循环耗时: 0.2448秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第91次循环耗时: 0.2183秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第92次循环耗时: 0.2087秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第93次循环耗时: 0.1869秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第94次循环耗时: 0.1796秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第95次循环耗时: 0.1743秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第96次循环耗时: 0.1629秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第97次循环耗时: 0.1619秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第98次循环耗时: 0.1535秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第99次循环耗时: 0.1547秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第100次循环耗时: 0.1632秒
+ready to enter evaluate_annotations in line 68, metrics.py
+第101次循环耗时: 0.1536秒
+esm_sae bp
+Fmax: 0.159, Smin: 46.910, threshold: 0.74, spec: 147
+WFmax: 0.101, threshold: 0.74
+AUC: 0.593
+AUPR: 0.065
+AVGIC: 81.501

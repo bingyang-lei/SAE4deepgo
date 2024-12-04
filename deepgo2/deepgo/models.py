@@ -155,7 +155,7 @@ class AutoEncoderConfig:
     epochs: int = 10
     lr: float = 1e-3
     num_tokens: int = int(2e9)
-    l1_coeff: float = 3e-4
+    l1_coeff: float = 0.1# 3e-4
     beta1: float = 0.9
     beta2: float = 0.99
     dict_mult: int = 8
@@ -188,16 +188,16 @@ class SAEModel(BaseDeepGOModel):
         self.W_dec = nn.Parameter(th.nn.init.kaiming_uniform_(th.empty(cfg.d_hidden, cfg.d_mlp, dtype=cfg.dtype)))
         self.b_enc = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
         self.b_dec = nn.Parameter(torch.zeros(cfg.d_mlp, dtype=cfg.dtype))
-        self.W_dec.data[:] = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True)
+        self.W_dec.data[:] = self.W_dec / self.W_dec.norm(dim=-1, keepdim=True) # 这里是干啥的没太明白
 
-        self.to("cuda")
+        self.to("cuda:0")
 
     def forward(self, feature: torch.Tensor):
         feature_cent = feature - self.b_dec
         acts = F.relu(feature_cent @ self.W_enc + self.b_enc)
         prediction = F.sigmoid(feature_cent @ self.W_enc + self.b_enc)
         feature_reconstruct = acts @ self.W_dec + self.b_dec
-        l2_loss = (feature_reconstruct.float() - feature.float()).pow(2).sum(-1).mean(0)
+        l2_loss = (feature_reconstruct.float() - feature.float()).pow(2).sum(-1).mean(0) # 回头检查一下这个和下面那个写法一样不
         l1_loss = self.cfg.l1_coeff * (acts.float().abs().sum())
         loss = l2_loss + l1_loss
         return loss, feature_reconstruct, acts, l2_loss, l1_loss, prediction
@@ -216,50 +216,56 @@ class GateSAEModel(BaseDeepGOModel):
         self.b_mag = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
         self.b_gate = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype))
         self.r_mag = nn.Parameter(torch.zeros(cfg.d_hidden, dtype=cfg.dtype)) # 后面可以尝试用kaiming初始化
-        self.W_gate = self.W_mag * self.r_mag
+        
+        # 这一部分不能放在这里计算。W_gate是在cpu上计算的
+        # self.W_gate = self.W_mag * torch.exp(self.r_mag)
+        # self.W_gate = self.W_gate.to("cuda:1")
         self.b_dec = nn.Parameter(torch.zeros(cfg.d_mlp, dtype=cfg.dtype))
 
-    def forward(self, x: torch.Tensor):
+        # self.to("cuda:1")
+
+    def forward(self, x: torch.Tensor, Y: torch.Tensor):
+        # 如果不加下面这一段，w_gate会在cpu上，这是为什么？是因为self中w_gate是乘法算出来的吗
+        device = x.device
+        
+        self.W_gate = self.W_mag * torch.exp(self.r_mag)
+        
+        # self.W_mag = self.W_mag.to(device)
+        # self.W_dec = self.W_dec.to(device)
+        # self.b_mag = self.b_mag.to(device)
+        # self.b_gate = self.b_gate.to(device)
+        # self.r_mag = self.r_mag.to(device)
+        # self.W_gate = self.W_gate.to(device)
+        #self.b_dec = self.b_dec.to(device)
+
         # Apply pre-encoder bias
         x_center = x - self.b_dec
         
         # Gating encoder (estimates which features are active)
-        active_features = (x_center @ self.W_gate + self.b_gate) > 0
+        # 这里要替换成标签Y来代表激活
+        # active_features = (x_center @ self.W_gate + self.b_gate) > 0
         
         # Magnitudes encoder (estimates active features’ magnitudes)
         feature_magnitudes = F.relu(x_center @ self.W_mag + self.b_mag)
         
         # 重建后的激活
-        reconstruction = (active_features * feature_magnitudes) @ self.W_dec + self.b_dec
+        reconstruction = (Y * feature_magnitudes) @ self.W_dec + self.b_dec
         reconstruction_loss = torch.sum((reconstruction - x)**2, dim=-1).mean()
         pi_gate = x_center @ self.W_gate + self.b_gate
         predition = F.sigmoid(pi_gate)
+        
+        
         # 计算辅助误差
         with torch.no_grad():
             W_dec_stop_grad = self.W_dec.detach()
             b_dec_stop_grad = self.b_dec.detach()
-        via_reconstruction_loss = (F.relu(pi_gate) @ W_dec_stop_grad + b_dec_stop_grad)
 
+        via_reconstruction = (F.relu(pi_gate) @ W_dec_stop_grad + b_dec_stop_grad)
+        via_reconstruction_loss = torch.sum((via_reconstruction - x)**2, dim=-1).mean()
+        
         return reconstruction,reconstruction_loss,predition,via_reconstruction_loss
 
-    # def loss(self, x: torch.Tensor, l1_coef):
-    #     gated_sae_loss = 0.0
-    
-    #     # 计算重建误差
-    #     reconstruction = self.forward(x)
-    #     gated_sae_loss += torch.sum((reconstruction - x)**2, dim=-1).mean()
-        
-    #     # 计算稀疏性误差
-    #     x_center = x - self.b_dec
-    #     via_gate_feature_magnitudes = F.relu(x_center @ self.W_gate + self.b_gate)
-    #     gated_sae_loss += l1_coef * torch.sum(via_gate_feature_magnitudes, dim=-1).mean()
-        
-    #     # 计算辅助误差
-    #     with torch.no_grad():
-    #         W_dec_stop_grad = self.W_dec.detach()
-    #         b_dec_stop_grad = self.b_dec.detach()
-        
-    #     via_gate_reconstruction = (via_gate_feature_magnitudes @ W_dec_stop_grad + b_dec_stop_grad)
-    #     gated_sae_loss += torch.sum((via_gate_reconstruction - x)**2, dim=-1).mean()
-        
-    #     return gated_sae_loss
+# %%
+if __name__ == '__main__':
+    from torch import nn
+    import torch
