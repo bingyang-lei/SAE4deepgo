@@ -1,4 +1,8 @@
 # 如果使用protgpt2激活，则需要显式设置-m protgpt2 -td test_gpt
+
+# import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+
 import click as ck
 import pandas as pd
 import torch as th

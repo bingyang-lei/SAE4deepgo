@@ -156,9 +156,18 @@ def tokenized_tqa_gen(dataset, tokenizer):
     return all_prompts, all_labels, all_categories
 
 
-def get_protgpt2_activations_bau(model, batch, device): 
-    HEADS = [f"transformer.h.{i}.attn.c_proj" for i in range(model.config.num_hidden_layers)]
-    MLPS = [f"transformer.h.{i}.mlp.act" for i in range(model.config.num_hidden_layers)]
+def get_protgpt2_activations_bau(model, batch, device, model_name): 
+
+    if model_name == 'protgpt2':
+        # for protgpt2
+        HEADS = [f"transformer.h.{i}.attn.c_proj" for i in range(model.config.num_hidden_layers)]
+        MLPS = [f"transformer.h.{i}.mlp.act" for i in range(model.config.num_hidden_layers)]
+    # for esm650
+    elif model_name == 'esm2':
+        HEADS = [f"encoder.layer.{i}.attention.output.dropout" for i in range(model.config.num_hidden_layers)]
+        MLPS = [f"encoder.layer.{i}.intermediate.dense" for i in range(model.config.num_hidden_layers)]
+
+
     # for n, m in model.named_modules():
     #     print(n)
     #     x=1

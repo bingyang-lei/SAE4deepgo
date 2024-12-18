@@ -15,12 +15,14 @@ def get_data(df, features_dict, terms_dict, features_length, features_column):
         # Data vector
         if features_column == 'esm2':
             data[i, :] = th.FloatTensor(row.esm2)
-        elif features_column == 'protgpt2':
+        elif features_column == 'mlp':
             # #算出row.mlp[23]-row.mlp[33]的激活平均值
             # for j in range(23, 34):
             #     data[i, :] += th.FloatTensor(row.mlp_activation[j])
             # data[i, :] /= 11
-            data[i, :] = th.FloatTensor(row.mlp_activation[25])
+            data[i, :] = th.FloatTensor(row.mlp_activation[31])
+        elif features_column == 'head':
+            data[i, :] = th.FloatTensor(row.head_activation[0])
         elif features_column == 'interpros':
             for feat in row.interpros:
                 if feat in features_dict:
@@ -55,9 +57,12 @@ def load_data(
     if features_column == 'interpros':
         features_length = len(iprs_dict)
     
-    if features_column == 'protgpt2' :
+    if features_column == 'head' :
         train_df = pd.read_pickle(f'{data_root}/{ont}/train_gpt_data.pkl')
         valid_df = pd.read_pickle(f'{data_root}/{ont}/valid_gpt_data.pkl')
+    elif features_column == 'mlp':
+        train_df = pd.read_pickle(f'{data_root}/{ont}/train_gpt_mlp_data.pkl')
+        valid_df = pd.read_pickle(f'{data_root}/{ont}/valid_gpt_mlp_data.pkl')
     else:      
         train_df = pd.read_pickle(f'{data_root}/{ont}/train_data.pkl')
         valid_df = pd.read_pickle(f'{data_root}/{ont}/valid_data.pkl')

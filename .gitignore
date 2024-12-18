@@ -137,3 +137,4 @@ wandb/
 __pycache__/
 main.zip
 gpt2_deep_dives/cards/
+*.th

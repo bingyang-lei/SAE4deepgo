@@ -30,7 +30,7 @@ from deepgo.metrics import compute_roc
     help='GO subontology')
 @ck.option(
     '--model-name', '-m', type=ck.Choice([
-        'deepgozero', 'deepgozero_plus', 'deepgozero_esm', 'deepgozero_esm_plus', 'esm_sae','protgpt2', 'protgpt2_26', 'protgpt2_25','protgpt2_average']),
+        'deepgozero', 'deepgozero_plus', 'deepgozero_esm', 'deepgozero_esm_plus', 'esm_sae','protgpt2', 'protgpt2_25','protgpt2_average']),
     default='deepgozero_esm',
     help='Prediction model name')# 在这里添加protgpt2的激活选项
 @ck.option(
@@ -39,7 +39,7 @@ from deepgo.metrics import compute_roc
     '--test-data-name', '-td', default='test', type=ck.Choice(['test', 'nextprot', 'valid', 'test_gpt']),# 设置新文件的保存路径
     help='Test data set name')
 @ck.option(
-    '--batch-size', '-bs', default=37,
+    '--batch-size', '-bs', default=64,
     help='Batch size for training')
 @ck.option(
     '--epochs', '-ep', default=128, # 原来是128
@@ -162,7 +162,8 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
             net.eval()
             with th.no_grad():
                 valid_steps = int(math.ceil(len(valid_labels) / batch_size))
-                valid_loss = 0
+                valid_pred_loss = 0
+                valid_reconstruct_loss = 0
                 preds = []
                 with ck.progressbar(length=valid_steps, show_pos=True) as bar:
                     for batch_features, batch_labels in valid_loader:
@@ -171,15 +172,18 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                         batch_labels = batch_labels.to(device)
                         _, feature_reconstruct, acts, l2_loss, l1_loss, logits = net(batch_features)
                         batch_loss = F.binary_cross_entropy(logits, batch_labels)
-                        valid_loss += batch_loss.detach().item() + l2_loss.detach().item()
+                        valid_pred_loss += batch_loss.detach().item()
+                        valid_reconstruct_loss += l2_loss.detach().item()
                         preds = np.append(preds, logits.detach().cpu().numpy())
-                valid_loss /= valid_steps
+                valid_pred_loss /= valid_steps
+                valid_reconstruct_loss /= valid_steps
                 roc_auc = compute_roc(valid_labels, preds)
-                print(f'Epoch {epoch}: pred_Loss - {train_pred_loss}, L2 Loss: {train_l2loss}, Valid_total_loss - {valid_loss}, AUC - {roc_auc}')
+                print(f'''Epoch {epoch}: pred_Loss - {train_pred_loss}, reconstruction Loss: {train_l2loss}, 
+                      Valid_pred_loss - {valid_pred_loss}, Valid_reconstruct_loss - {valid_reconstruct_loss},
+                      AUC - {roc_auc}''')
 
-            print('L2 Loss', train_l2loss)
-            if valid_loss < best_loss:
-                best_loss = valid_loss
+            if valid_pred_loss < best_loss:
+                best_loss = valid_pred_loss
                 print('Saving model')
                 th.save(net.state_dict(), model_file)
 
@@ -193,7 +197,7 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
 
     with th.no_grad():
         valid_steps = int(math.ceil(len(valid_labels) / batch_size))
-        valid_loss = 0
+        valid_pred_loss = 0
         preds = []
         with ck.progressbar(length=valid_steps, show_pos=True) as bar:
             for batch_features, batch_labels in valid_loader:
@@ -202,13 +206,14 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                 batch_labels = batch_labels.to(device)
                 _, feature_reconstruct, acts, l2_loss, l1_loss, logits = net(batch_features)
                 batch_loss = F.binary_cross_entropy(logits, batch_labels)
-                valid_loss += batch_loss.detach().item() + l2_loss.detach().item()
+                valid_pred_loss += batch_loss.detach().item() 
                 preds = np.append(preds, logits.detach().cpu().numpy())
-        valid_loss /= valid_steps
+        valid_pred_loss /= valid_steps
 
     with th.no_grad():
         test_steps = int(math.ceil(len(test_labels) / batch_size))
-        test_loss = 0
+        test_pred_loss = 0
+        test_reconstruct_loss = 0
         preds = []
         with ck.progressbar(length=test_steps, show_pos=True) as bar:
             for batch_features, batch_labels in test_loader:
@@ -217,16 +222,22 @@ def main(data_root, ont, model_name, model_id, test_data_name, batch_size, epoch
                 batch_labels = batch_labels.to(device)
                 _, feature_reconstruct, acts, l2_loss, l1_loss, logits = net(batch_features)
                 batch_loss = F.binary_cross_entropy(logits, batch_labels)
-                test_loss += batch_loss.detach().cpu().item() + l2_loss.detach().cpu().item()
+                test_pred_loss += batch_loss.detach().cpu().item()
+                test_reconstruct_loss += l2_loss.detach().cpu().item()
                 preds.append(logits.detach().cpu().numpy())
-            test_loss /= test_steps
+            test_pred_loss /= test_steps
+            test_reconstruct_loss /= test_steps
         preds = np.concatenate(preds)
         roc_auc = compute_roc(test_labels, preds)
-        print(f'Valid Loss - {valid_loss}, Test Loss - {test_loss}, Test AUC - {roc_auc}')
+        print(f'''Valid pred Loss - {valid_pred_loss}, 
+        Test pred Loss - {test_pred_loss}, Test_reconstruct_loss - {test_reconstruct_loss},
+        Test AUC - {roc_auc}''')
 
     # Save the performance into a file
     with open(f'{data_root}/{ont}/valid_{model_name}.pf', 'w') as f:
-        f.write(f'Valid Loss - {valid_loss}, Test Loss - {test_loss}, Test AUC - {roc_auc}\n')
+        f.write(f'''Valid pred Loss - {valid_pred_loss}, Test_reconstruct_loss - {test_reconstruct_loss},
+                Test pred Loss - {test_pred_loss}, 
+                Test AUC - {roc_auc}\n''')
     # return
     preds = list(preds)
     # Propagate scores using ontology structure

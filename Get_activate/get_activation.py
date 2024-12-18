@@ -1,6 +1,6 @@
 # Pyvene method of getting activations
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0" 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0" 
 
 import torch
 from load_datasets import get_dataset, custom_collate_fn
@@ -44,7 +44,9 @@ HF_NAMES = {
     # 'llama3_70B_instruct': 'meta-llama/Meta-Llama-3-70B-Instruct',
     
     # 目前用的蛋白质模型
-    "protgpt2": "/mnt/data1/xyliu/Pre_Train_Model/ProtGPT2",
+    # "protgpt2": "/mnt/data1/xyliu/Pre_Train_Model/ProtGPT2",
+    
+    "esm2":"/mnt/data1/xyliu/Pre_Train_Model/esm2_650",
 }
 
 def main(): 
@@ -55,7 +57,7 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', type=str, default='protgpt2')
+    parser.add_argument('--model_name', '-m', type=str, default='protgpt2')
     parser.add_argument('--model_prefix', type=str, default='', help='prefix of model name')
     parser.add_argument('--dataset_name', type=str, default='ctrlprot_dataset')
     parser.add_argument('--device', type=int, default=0)
@@ -64,9 +66,13 @@ def main():
     model_name_or_path = HF_NAMES[args.model_prefix + args.model_name]
     # loading model
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-    model = AutoModelForCausalLM.from_pretrained(model_name_or_path, low_cpu_mem_usage=True, torch_dtype=torch.float16, device_map="auto")
-    device = "cuda"
 
+    # 如果是esm650, 用AutoModel,protgpt2用AutoModelForCausalLM
+    if args.model_name == "esm2":
+        model = AutoModel.from_pretrained(model_name_or_path, low_cpu_mem_usage=True, torch_dtype=torch.float16, device_map="auto")
+    elif args.model_name == "protgpt2":
+        model = AutoModelForCausalLM.from_pretrained(model_name_or_path, low_cpu_mem_usage=True, torch_dtype=torch.float16, device_map="auto")
+    device = "cuda"
  
     if args.dataset_name == "ctrlprot_dataset":
         origin_dataset = get_dataset(args.dataset_name,tokenizer)
@@ -101,11 +107,14 @@ def main():
             if a==1:
                 break
         break
+
+    print(model)
+    model.float()
     for step, batch in enumerate(tqdm(dataloader)):
         # test_batch = {k: v.to(device) for k, v in batch.items()}
         # outputs = model(**test_batch)
         
-        layer_wise_activations, head_wise_activations, mlp_wise_activations = get_protgpt2_activations_bau(model, batch, device)
+        layer_wise_activations, head_wise_activations, mlp_wise_activations = get_protgpt2_activations_bau(model, batch, device,args.model_name)
         
         # all_layer_wise_activations.append(layer_wise_activations.copy())
         for i in range(len(batch["sequence"])):

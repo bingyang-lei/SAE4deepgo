@@ -42,7 +42,7 @@ def get_dataset(dataset_name, tokenizer):
     # dataset format: input_ids, attention_mask, tags, sequences, final_pos, 
     if dataset_name == "ctrlprot_dataset":
     
-        dataset_dict = {"component/train0.csv":"GO:1",}
+        dataset_dict = {"process/train0.csv":"GO:1",}
                         # "function/1.tsv":"GO:0003723",
                         # "process/0.tsv":"GO:0016310",
                         # "process/1.tsv":"GO:0006412",

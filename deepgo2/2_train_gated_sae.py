@@ -6,7 +6,6 @@
 # esm_sae_gate4:coef=2000,其他和esm_sae_gate3一样
 # esm_sae_gate5:coef=10000,其他和esm_sae_gate4一样
 
-
 import time
 import click as ck
 import pandas as pd
@@ -28,7 +27,7 @@ from deepgo.utils import Ontology, propagate_annots
 from multiprocessing import Pool
 from functools import partial
 from deepgo.data import load_data, load_normal_forms
-from deepgo.models import DeepGOModel, GateSAEModel, GateSAEModel2, GateSAEModel3   #, AutoEncoderConfig
+from deepgo.models import DeepGOModel, GateSAEModel, GateSAEModel2   #, AutoEncoderConfig
 from deepgo.metrics import compute_roc
 import wandb
 import argparse
@@ -50,33 +49,40 @@ def parse_args():
     parser.add_argument("--use_wandb", "-wandb", default=True, type=bool, help="是否启用Weights and Biases日志")
     parser.add_argument('--data-root', '-dr', default='data', help='数据文件夹路径')
     parser.add_argument('--ont', '-ont', default='mf', choices=['mf', 'bp', 'cc'], help='GO本体')
-    parser.add_argument('--model-name', '-m', choices=['deepgozero_esm', 'deepgozero_esm_plus', 'esm_sae', 'esm_sae_gate4', 'esm_sae_gate5', 'esm_sae_gate3', 'protgpt2', 'protgpt2_average'], 
+    parser.add_argument('--model-name', '-m', choices=['deepgozero_esm', 'deepgozero_esm_plus', 'esm_sae', 'esm_sae_gate4', 'gpt_sae_head36', 'protgpt2_average'], 
                         default='deepgozero_esm', help='模型名称')
     parser.add_argument('--model-id', '-mi', type=int, required=False)
-    parser.add_argument('--test-data-name', '-td', default='test', choices=['test', 'nextprot', 'valid', 'test_gpt'], help='测试数据集名称')
+    parser.add_argument('--test-data-name', '-td', default='test', choices=['test', 'nextprot', 'valid', 'test_gpt', 'test_gpt_mlp'], help='测试数据集名称')
     parser.add_argument('--batch-size', '-bs', default=-1, type=int, help='训练的batch大小')
     parser.add_argument('--epochs', '-ep', default=-1, type=int, help='训练的轮次')
     parser.add_argument("--learning_rate","-lr",default = -1, type = float, help="learning_rate")
     parser.add_argument('--load', '-ld', action='store_true', help='是否加载预训练模型')
-    parser.add_argument('--device', '-d', default='cuda:1', help='训练设备')
+    parser.add_argument('--device', '-d', default='cuda:0', help='训练设备')
     
-    
+    # 使用head做激活，要设置-td=test_gpt，使用mlp，要使用test_gpt_mlp
 
     
     # 解析参数并返回
     args = parser.parse_args()
     
     # 直接修改模型名：
-    args.model_name = "esm_gated3_100%_1_1_0.1"
+    args.model_name = "gpt_sae_head_1_no_kaiming"
+    if args.model_name.find('esm') != -1:
+        args.d_mlp = 2560
+    elif args.model_name.find('mlp') != -1:
+        args.d_mlp = 5120
+    elif args.model_name.find('head') != -1:
+        args.d_mlp = 1280
+
     # 模型参数
     args.seed = 42
     args.pred_weight = 1
-    args.penalty_weight = 0.1
-    args.rec_weight = 1
+    args.aux_weight = 0
+    args.rec_weight = 1000
     # 额外添加的参数量 
     args.extra_ratio = 1
      
-    args.d_mlp  = 2560 
+    # args.d_mlp  = 1280 
     args.dtype = th.float32
     args.d_hidden = 21356
     
@@ -95,7 +101,7 @@ def parse_args():
     args.out_file = os.path.join(output_dir, 'result/{args.ont}/{args.test_data_name}_predictions_{args.model_name}.pkl')
     args.performance_file = os.path.join(output_dir,f"{args.test_data_name}_predictions_{args.model_name}.pkl")
     
-    args.use_wandb = False
+    args.use_wandb = True
     return args
 
 
@@ -103,10 +109,12 @@ def main(args):
     """
     This script is used to train DeepGO models
     """
+    print('args.d_mlp:',args.d_mlp)
+
     if args.use_wandb:
         wandb.login()
         # wandb.init(project="", entity="")#your account
-        wandb.init(project="protein_interpret", entity = "xyl-nju-nanjing-university", name = args.model_name, config=vars(args))#your account
+        wandb.init(project="protein_interpret_on_gpt2", entity = "xyl-nju-nanjing-university", name = args.model_name, config=vars(args),settings=wandb.Settings(init_timeout=120))#your account
 
 
     if args.model_name.find('plus') != -1:
@@ -125,9 +133,12 @@ def main(args):
     if args.model_name.find('esm') != -1:
         features_length = 2560
         features_column = 'esm2'
-    elif args.model_name.find('protgpt2') != -1:
+    elif args.model_name.find('mlp') != -1:
         features_length = 5120
-        features_column = 'protgpt2'
+        features_column = 'mlp'
+    elif args.model_name.find('head') != -1:
+        features_length = 1280
+        features_column = 'head'
 
     test_data_file = f'{args.test_data_name}_data.pkl'
     iprs_dict, terms_dict, train_data, valid_data, test_data, test_df = load_data(
@@ -173,12 +184,12 @@ def main(args):
    
     n_zeros, n=0,0
     #cfg = AutoEncoderConfig()
-    net = GateSAEModel3(features_length, n_terms, n_zeros, n_rels, args.device, args).to(args.device)
+    net = GateSAEModel2(features_length, n_terms, n_zeros, n_rels, args.device, args).to(args.device)
     print(net)
 
 
     optimizer = th.optim.Adam(net.parameters(), lr=args.learning_rate)
-    scheduler = MultiStepLR(optimizer, milestones=[20], gamma=0.1)
+    # scheduler = MultiStepLR(optimizer, milestones=[5, 20], gamma=0.1)
 
     best_loss = 10000.0
     if not args.load:
@@ -188,7 +199,7 @@ def main(args):
             net.train()
             train_pred_loss = 0
             train_reconstruction_loss = 0
-            train_penalty_loss = 0
+            train_via_reconstruction_loss = 0
             train_steps = int(math.ceil(len(train_labels) / args.batch_size))
             # with ck.progressbar(length=train_steps, show_pos=True) as bar:
             #     for batch_features, batch_labels in train_loader:
@@ -212,62 +223,64 @@ def main(args):
             num_reconstruction = 0
             pred_loss_grad = 0
             num_pred = 0
-            penalty_loss_grad = 0
+            via_reconstruction_loss_grad = 0
             num_via = 0
             # with ck.progressbar(length=train_steps, show_pos=True) as bar:
-            for batch_features, batch_labels in tqdm(train_loader):
+            for batch_features, batch_labels in train_loader:
                 # bar.update(1)
                 batch_features = batch_features.to(args.device)
                 batch_labels = batch_labels.to(args.device)
 
                 # Forward pass
-                reconstruction, reconstruction_loss, predition, penalty_loss \
+                reconstruction, reconstruction_loss, predition, via_reconstruction_loss \
                     = net(batch_features, batch_labels)
+                # print("reconstruction: ",reconstruction[0])
+                # print()
+                # print("batch_features: ", batch_features[0])
                 pred_loss = F.binary_cross_entropy(predition, batch_labels)
-                total_loss = args.pred_weight * pred_loss + args.rec_weight * reconstruction_loss + args.penalty_weight * penalty_loss
+                total_loss = args.pred_weight * pred_loss + args.rec_weight * reconstruction_loss + args.aux_weight * via_reconstruction_loss
                 # total_loss = reconstruction_loss
                 # # # Zero gradients before backward pass
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
 
-                # Backward pass for pred_loss to calculate its gradient norm
-                pred_loss.backward(retain_graph=True)  # Backprop only pred_loss
-                for name, param in net.named_parameters():
-                    if param.grad is not None:
-                        num_pred+=1
-                        pred_loss_grad += param.grad.norm().item()  # Calculate L2 norm of gradient
-                        print(f"Name: {name} | pred_loss gradient norm: {param.grad.norm().item()}")
+                # # Backward pass for pred_loss to calculate its gradient norm
+                # pred_loss.backward(retain_graph=True)  # Backprop only pred_loss
+                # for name, param in net.named_parameters():
+                #     if param.grad is not None:
+                #         num_pred+=1
+                #         pred_loss_grad += param.grad.norm().item()  # Calculate L2 norm of gradient
+                #         #print(f"Name: {name} | pred_loss gradient norm: {param.grad.norm().item()}")
                 
-                optimizer.zero_grad()
-                # Backward pass for reconstruction_loss to calculate its gradient norm
-                reconstruction_loss.backward(retain_graph=True)  # Backprop only reconstruction_loss
+                # optimizer.zero_grad()
+                # # Backward pass for reconstruction_loss to calculate its gradient norm
+                # reconstruction_loss.backward(retain_graph=True)  # Backprop only reconstruction_loss
 
-                for name, param in net.named_parameters():
-                    if param.grad is not None:
-                        num_reconstruction+=1
-                        reconstruction_loss_grad += param.grad.norm().item()  # Calculate L2 norm of gradient
-                        print(f"Name: {name} | reconstruction_loss gradient norm: {param.grad.norm().item()}")
+                # for name, param in net.named_parameters():
+                #     if param.grad is not None:
+                #         num_reconstruction+=1
+                #         reconstruction_loss_grad += param.grad.norm().item()  # Calculate L2 norm of gradient
+                #         #print(f"Name: {name} | reconstruction_loss gradient norm: {param.grad.norm().item()}")
                 
-                optimizer.zero_grad()
+                # optimizer.zero_grad()
                         
-                # Backward pass for via_reconstruction_loss to calculate its gradient norm
-                penalty_loss.backward(retain_graph=True)  # Backprop only via_reconstruction_loss
+                # # Backward pass for via_reconstruction_loss to calculate its gradient norm
+                # via_reconstruction_loss.backward(retain_graph=True)  # Backprop only via_reconstruction_loss
 
-                for name, param in net.named_parameters():
-                    if param.grad is not None:
-                        num_via+=1
-                        penalty_loss_grad += param.grad.norm().item()  # Calculate L2 norm of gradient
-                        print(f"Name: {name} | penalty_loss gradient norm: {param.grad.norm().item()}")
+                # for name, param in net.named_parameters():
+                #     if param.grad is not None:
+                #         num_via+=1
+                #         via_reconstruction_loss_grad += param.grad.norm().item()  # Calculate L2 norm of gradient
+                #         #print(f"Name: {name} | via_reconstruction_loss gradient norm: {param.grad.norm().item()}")
                 
                 # Perform the final backpropagation for the total loss
                 optimizer.zero_grad()
                 train_pred_loss += pred_loss.detach().item()
                 train_reconstruction_loss += reconstruction_loss.detach().item()
-                train_penalty_loss += penalty_loss.detach().item()
+                train_via_reconstruction_loss += via_reconstruction_loss.detach().item()
                 
                 total_loss.backward()  # Backprop the total loss
                 optimizer.step()  # Update parameters  
-            
-            scheduler.step()    
+                
             # reconstruction_loss_grad /= num_reconstruction
             # pred_loss_grad /= num_pred
             # via_reconstruction_loss_grad /= num_via
@@ -287,7 +300,7 @@ def main(args):
             
             train_pred_loss /= train_steps
             train_reconstruction_loss /= train_steps
-            train_penalty_loss /= train_steps
+            train_via_reconstruction_loss /= train_steps
             
             # ****Validation********
             net.eval()
@@ -322,7 +335,7 @@ def main(args):
                 print(f'''Epoch {epoch}: 
                     train_pred_Loss - {train_pred_loss}, 
                     train_reconstruction_loss: {train_reconstruction_loss},
-                    train_penalty_loss: {train_penalty_loss},
+                    train_via_reconstruction_loss: {train_via_reconstruction_loss},
                     
                     Valid_pred_Loss - {valid_pred_loss},
                     Valid_reconstruction_Loss - {valid_reconstruction_loss}, 
@@ -330,13 +343,13 @@ def main(args):
                 
                 if args.use_wandb:
                     wandb.log({
-                        "epoch": epoch,
+                        # "epoch": epoch,
                         "train_pred_loss": train_pred_loss ,
                         "train_reconstruction_loss": train_reconstruction_loss ,
-                        "train_penalty_loss": train_penalty_loss ,
+                        "train_via_reconstruction_loss": train_via_reconstruction_loss ,
                         "valid_pred_loss": valid_pred_loss,
                         "valid_reconstruction_loss": valid_reconstruction_loss,
-                        "valid_auc": roc_auc,
+                        # "valid_auc": roc_auc,
                     })
 
                 print('Test')
@@ -374,9 +387,9 @@ def main(args):
                 if args.use_wandb:
                     wandb.log({
                         "epoch": epoch,
-                        "valid_pred_loss": valid_pred_loss,
-                        "valid_reconstruction_loss": valid_reconstruction_loss,
-                        "valid_auc": roc_auc,
+                        "test_pred_loss": test_pred_loss,
+                        "test_reconstruction_loss": test_reconstruction_loss,
+                        # "valid_auc": roc_auc,
                     })
                     
 
